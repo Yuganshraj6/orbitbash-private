@@ -1,0 +1,14 @@
+name=Midnight Blue
+bg=#071426
+fg=#B9D8FF
+accent=#6CB6FF
+border=#4D78A8
+highlight_bg=#12345A
+highlight_fg=#FFFFFF
+dim=#7189A8
+ok=#8DDBFF
+warn=#FFD166
+err=#FF7897
+logo_from=#4FA7FF
+logo_to=#9ED0FF
+border_style=double

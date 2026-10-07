@@ -1,0 +1,14 @@
+name=Rose Gold
+bg=#211217
+fg=#FFE6EE
+accent=#F6B0C7
+border=#D69AAE
+highlight_bg=#643040
+highlight_fg=#FFFFFF
+dim=#B98C9B
+ok=#A5E6C1
+warn=#FFD27A
+err=#FF708F
+logo_from=#E79AB4
+logo_to=#FFD0DE
+border_style=round

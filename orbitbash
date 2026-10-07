@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# ORBIT BASH — host-side private VPS manager.
+# ASSUMPTIONS:
+# - The public one-line curl|bash hosting URL is intentionally deferred; install.sh is local/package bootstrap.
+# - Linux is the native target. WSL2 can run the Bash command; Windows Terminal without WSL uses remote-controller mode.
+# - In-VPS tools are intentionally not built now, per the original scope.
+# - Verified automatic cloud-image acquisition is enabled for Ubuntu and Debian; other OS choices remain available through Docker/LXC or custom images.
+set -uo pipefail
+
+if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4) )); then
+    printf 'OrbitBash requires Bash 4.4+. Detected: %s\n' "$BASH_VERSION" >&2
+    exit 1
+fi
+
+export BASE_DIR="${HOME}/.orbitbash"
+export ORBIT_VERSION='1.1.0'
+
+# Keep the exact requested library layout.
+for lib in util ui themes auth backend create lifecycle live delete trash macros files backups nodes ai settings; do
+    [[ -r "${BASE_DIR}/lib/${lib}.sh" ]] || { printf 'Missing OrbitBash library: %s/lib/%s.sh\n' "$BASE_DIR" "$lib" >&2; exit 1; }
+    # shellcheck source=/dev/null
+    source "${BASE_DIR}/lib/${lib}.sh"
+done
+
+orbit_init_dirs() {
+    mkdir -p "${BASE_DIR}" "${BASE_DIR}/lib" "${BASE_DIR}/auth" "${BASE_DIR}/themes" "${BASE_DIR}/images" "${BASE_DIR}/vps" "${BASE_DIR}/trash" "${BASE_DIR}/backups" "${BASE_DIR}/exports" "${BASE_DIR}/nodes" "${BASE_DIR}/logs" "${BASE_DIR}/run/lock"
+    touch "${BASE_DIR}/config"; chmod 600 "${BASE_DIR}/config"
+}
+
+cmd_check() {
+    printf 'OrbitBash v%s — system check\n\n' "$ORBIT_VERSION"
+    printf '%-28s %-14s %s\n' 'Feature' 'Status' 'Details'
+    printf '%-28s %-14s %s\n' '----------------------------' '--------------' '-----------------------------'
+    local status detail
+    if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4) )); then status=OK; else status=FAIL; fi; printf '%-28s %-14s %s\n' 'Bash >= 4.4' "$status" "$BASH_VERSION"
+    if command -v flock >/dev/null 2>&1; then status=OK; detail=flock; else status=FAIL; detail=missing; fi; printf '%-28s %-14s %s\n' 'Atomic locking' "$status" "$detail"
+    for x in openssl curl wget ssh python3; do if command -v "$x" >/dev/null 2>&1; then status=OK; detail=$(command -v "$x"); else status=limited; detail=missing; fi; printf '%-28s %-14s %s\n' "$x" "$status" "$detail"; done
+    if [[ $(id -u) -eq 0 ]]; then printf '%-28s %-14s %s\n' 'Root privileges' OK 'running as root'; elif command -v sudo >/dev/null 2>&1; then printf '%-28s %-14s %s\n' 'Root privileges' OK 'sudo available'; else printf '%-28s %-14s %s\n' 'Root privileges' limited 'root/sudo unavailable'; fi
+    if command -v virsh >/dev/null 2>&1 || command -v libvirtd >/dev/null 2>&1 || command -v virtqemud >/dev/null 2>&1; then printf '%-28s %-14s %s\n' 'libvirt' OK 'available'; else printf '%-28s %-14s %s\n' 'libvirt' optional 'not installed'; fi
+    if [[ -d /sys/module/kvm ]]; then detail='kernel module present'; else detail='not loaded'; fi; printf '%-28s %-14s %s\n' 'KVM kernel support' "$([[ -c /dev/kvm ]] && echo OK || echo LIMITED)" "$detail"
+    if command -v qemu-system-x86_64 >/dev/null 2>&1; then printf '%-28s %-14s %s\n' 'QEMU' OK "$(command -v qemu-system-x86_64)"; else printf '%-28s %-14s %s\n' 'QEMU' unavailable 'install qemu-system-x86'; fi
+    if command -v docker >/dev/null 2>&1; then printf '%-28s %-14s %s\n' 'Docker' OK 'available'; else printf '%-28s %-14s %s\n' 'Docker' unavailable 'not installed'; fi
+    if command -v incus >/dev/null 2>&1 || command -v lxc >/dev/null 2>&1; then printf '%-28s %-14s %s\n' 'LXC/Incus' OK 'available'; else printf '%-28s %-14s %s\n' 'LXC/Incus' unavailable 'not installed'; fi
+    for x in tmux screen zstd qrencode rclone socat cloud-localds genisoimage; do if command -v "$x" >/dev/null 2>&1; then status=OK; detail='installed'; else status=optional; detail='missing'; fi; printf '%-28s %-14s %s\n' "$x" "$status" "$detail"; done
+    printf '%-28s %-14s %s\n' 'Backend selection' "$ORBIT_BACKEND" 'detected at startup'
+    printf '%-28s %-14s %s\n' 'Host RAM' OK "$(host_total_ram_mb) MB"
+    printf '%-28s %-14s %s\n' 'Free disk in OrbitBash' OK "$(host_free_disk_gb) GB"
+    printf '\nNo feature is reported OK unless its prerequisite is actually available.\n'
+}
+
+cmd_uninstall() {
+    printf 'Estimated time: ~2s\n'
+    printf 'Uninstall OrbitBash app files? VPSes and backups are kept by default. (y/N): '
+    local ans; IFS= read -r ans < /dev/tty || ans='n'; [[ "${ans,,}" == y ]] || { echo 'Aborted.'; return 0; }
+    local purge='n'; printf 'Also permanently delete vps/ and backups/? (y/N): '; IFS= read -r purge < /dev/tty || purge='n'
+    rm -f "${HOME}/.local/bin/orbitbash" "${BASE_DIR}/orbitbash"
+    rm -rf "${BASE_DIR}/lib" "${BASE_DIR}/themes" "${BASE_DIR}/auth" "${BASE_DIR}/logs" "${BASE_DIR}/run" "${BASE_DIR}/config"
+    if [[ "${purge,,}" == y ]]; then rm -rf "${BASE_DIR}/vps" "${BASE_DIR}/backups" "${BASE_DIR}/trash" "${BASE_DIR}/images" "${BASE_DIR}/exports" "${BASE_DIR}/nodes"; rmdir "${BASE_DIR}" 2>/dev/null || true; fi
+    echo 'OrbitBash uninstalled.'
+}
+
+cmd_in_vps() {
+    ui_clear; ui_paint_bg; c dim; ui_center_text 'In-VPS tools (coming later)'; c reset; echo
+    ui_center_text 'The host-side command is intentionally separate from the future in-VPS command.'
+    ui_pause
+}
+
+cmd_main() {
+    theme_load; ui_init; ui_paint_bg
+    if ! auth_check; then local rc=$?; ui_cleanup; c full_reset; return "$rc"; fi
+    backend_init
+    while true; do
+        ui_clear; ui_paint_bg
+        c acc; ui_center_text 'OrbitBash'; c reset
+        c dim; ui_center_text "Private • $(date '+%Y-%m-%d %H:%M:%S')"; c reset; echo
+        backend_banner; echo
+        local -a opts=('1 Create' '2 Manage (start/stop/schedule)' '3 Live' '4 Delete' '5 Macros' '6 Files/Configs' '7 In-VPS tools (coming later)' '8 Deleted VPSes' '9 Settings' 'System report' 'Exit')
+        ui_menu 'Main Menu' "${opts[@]}"; local c=$?
+        case "$c" in
+            0) cmd_create;; 1) cmd_manage;; 2) cmd_live;; 3) cmd_delete;; 4) cmd_macros;; 5) cmd_files;; 6) cmd_in_vps;; 7) cmd_trash;; 8) cmd_settings;; 9) cmd_report;; 10|255) break;;
+        esac
+    done
+    ui_cleanup; c full_reset; echo 'Exited OrbitBash.'
+}
+
+orbit_init_dirs
+
+case "${1:-}" in
+    --version|-v) printf 'OrbitBash v%s\n' "$ORBIT_VERSION"; exit 0;;
+    --check) theme_load; backend_detect; cmd_check; exit 0;;
+    --report) theme_load; backend_detect; ui_init; cmd_report; ui_cleanup; exit 0;;
+    --set-password)
+        theme_load; ui_init
+        if [[ ! -f "${BASE_DIR}/auth/main.hash" ]]; then auth_setup; rc=$?; else auth_set_password; rc=$?; fi
+        ui_cleanup; c full_reset; exit "$rc";;
+    --daemon)
+        backend_detect
+        ORBIT_DAEMON=1; export ORBIT_DAEMON
+        cmd_daemon; exit $?;;
+    --uninstall) cmd_uninstall; exit $?;;
+    --help|-h)
+        cat <<HELP
+OrbitBash v${ORBIT_VERSION}
+Usage: orbitbash [--check|--version|--report|--set-password|--daemon|--uninstall|--help]
+HELP
+        exit 0;;
+esac
+
+cmd_main

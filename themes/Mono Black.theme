@@ -1,0 +1,14 @@
+name=Mono Black
+bg=#000000
+fg=#FFFFFF
+accent=#FFFFFF
+border=#FFFFFF
+highlight_bg=#FFFFFF
+highlight_fg=#000000
+dim=#A0A0A0
+ok=#FFFFFF
+warn=#FFFFFF
+err=#FFFFFF
+logo_from=#FFFFFF
+logo_to=#FFFFFF
+border_style=ascii

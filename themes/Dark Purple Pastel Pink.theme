@@ -1,0 +1,14 @@
+name=Dark Purple Pastel Pink
+bg=#1B0B2E
+fg=#FFC2E2
+accent=#FFB6D9
+border=#E9A8D2
+highlight_bg=#4B2A7B
+highlight_fg=#FFFFFF
+dim=#9C7BB5
+ok=#8FE3A4
+warn=#FFD166
+err=#FF6B9A
+logo_from=#B084F5
+logo_to=#FFB6D9
+border_style=round

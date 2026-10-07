@@ -1,0 +1,14 @@
+name=Sunset Orange
+bg=#1C0B08
+fg=#FFE1C1
+accent=#FFB35C
+border=#D77B35
+highlight_bg=#5B2A17
+highlight_fg=#FFFFFF
+dim=#B98B6A
+ok=#A8E6CF
+warn=#FFD166
+err=#FF6677
+logo_from=#FF8A3D
+logo_to=#FFD28A
+border_style=round

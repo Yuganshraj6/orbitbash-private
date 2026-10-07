@@ -1,0 +1,42 @@
+OrbitBash repair notes
+=======================
+
+This release was assembled from the supplied OrbitBash prompt and the timestamped Gemini step files in the order they were generated. The original final assembly was then repaired in-place rather than treated as a clean-sheet project.
+
+Major repairs
+-------------
+- Removed placeholder/stub command implementations and restored working menu paths.
+- Restored the full system check and made it report missing prerequisites honestly.
+- Fixed theme parsing, color roles (including ok/warn/err), Private logo placement, and truecolor gradient rendering.
+- Kept salted password hashing, retry/lockout, 600 permissions, and terminal restoration.
+- Removed embedded/plaintext guest password handling from cloud-init; SSH key injection is used instead.
+- Replaced fake image creation with verified/resumable Ubuntu/Debian cloud-image acquisition and safe custom-image preparation.
+- Fixed qcow2/raw image format handling so raw/cloud images are not mislabeled as qcow2.
+- Added real QEMU process lifecycle, graceful-stop timeout fallback, console/copy/resize/snapshot/destroy paths.
+- Added real Docker/LXC execution paths and storage quota handling where the runtime supports it.
+- Replaced random/fake live metrics with backend/runtime metrics or an explicit n/a where the backend cannot expose a trustworthy value.
+- Added watchdog retry limits and expiry handling to the daemon.
+- Fixed deleted-VPS menu routing and trash/recovery flow.
+- Implemented actual macro execution for supported backends instead of log-only behavior.
+- Implemented export token isolation, optional password authentication, expiry, QR output, and daemon cleanup.
+- Implemented backup create/restore/delete/download with checksums and zstd/gzip fallback.
+- Integrated the report into the running app and --report entry point.
+- Integrated the AI helper menu and preserved encrypted key storage.
+- Removed fragile duplicate patching from the generated step flow by shipping a single coherent final source tree.
+- Made the UI's line repetition multibyte-safe to avoid UTF-8 box-drawing corruption.
+
+Scope intentionally deferred
+----------------------------
+- The public hosted one-line curl|bash command is NOT invented here. The local installer is complete; hosting and the final public command can be set later.
+- orbitbash-in / in-VPS tools remain a future menu entry, as requested.
+
+Validation performed
+--------------------
+- bash -n on orbitbash, install.sh, and every library.
+- Fresh-HOME install test.
+- orbitbash --version test.
+- orbitbash --check test.
+- orbitbash --report test.
+- PTY authentication + first-run host OS confirmation + main-menu entry/exit test.
+- Source/unit smoke test for salted auth verification and atomic config set/get.
+- Scan for known generated artifacts such as the embedded password, fake RANDOM metrics, fake image touch, old patch text, TODO/FIXME markers, and the broken escaped-pipe syntax.

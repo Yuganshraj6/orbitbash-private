@@ -1,0 +1,14 @@
+name=Neon Green
+bg=#06110A
+fg=#C7FFD7
+accent=#39FF88
+border=#26B85F
+highlight_bg=#123F24
+highlight_fg=#FFFFFF
+dim=#5E9F77
+ok=#5CFF91
+warn=#FFE66D
+err=#FF6B6B
+logo_from=#39FF88
+logo_to=#C7FFD7
+border_style=square

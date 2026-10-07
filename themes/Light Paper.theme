@@ -1,0 +1,14 @@
+name=Light Paper
+bg=#F7F3EC
+fg=#242424
+accent=#8F4CFF
+border=#767676
+highlight_bg=#DED7E8
+highlight_fg=#141414
+dim=#6D6D6D
+ok=#16754B
+warn=#926B00
+err=#B31D45
+logo_from=#7E55C9
+logo_to=#D05B9B
+border_style=ascii

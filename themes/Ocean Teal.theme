@@ -1,0 +1,14 @@
+name=Ocean Teal
+bg=#041A1C
+fg=#C2F8F3
+accent=#5DE6D3
+border=#37AFA5
+highlight_bg=#0B4B52
+highlight_fg=#FFFFFF
+dim=#6EA8A7
+ok=#88F0C1
+warn=#FFE08A
+err=#FF7088
+logo_from=#43D6C5
+logo_to=#B5FFF3
+border_style=square
